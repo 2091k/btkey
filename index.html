@@ -1,0 +1,237 @@
+$Host.UI.RawUI.ForegroundColor = "Green"
+Clear-Host
+
+function Format-Size($bytes) {
+    if ($bytes -ge 1GB) {
+        return "{0:N2} GB" -f ($bytes / 1GB)
+    } elseif ($bytes -ge 1MB) {
+        return "{0:N2} MB" -f ($bytes / 1MB)
+    } elseif ($bytes -ge 1KB) {
+        return "{0:N2} KB" -f ($bytes / 1KB)
+    } else {
+        return "$bytes B"
+    }
+}
+
+function Format-Time($seconds) {
+    if ($seconds -lt 0 -or [double]::IsNaN($seconds) -or [double]::IsInfinity($seconds)) {
+        return "00:00"
+    }
+    $totalSeconds = [int][math]::Round($seconds)
+    $hours = [int][math]::Floor($totalSeconds / 3600)
+    $remaining = $totalSeconds % 3600
+    $minutes = [int][math]::Floor($remaining / 60)
+    $secs = [int]($remaining % 60)
+    if ($hours -gt 0) {
+        return "{0:D2}:{1:D2}:{2:D2}" -f $hours, $minutes, $secs
+    } else {
+        return "{0:D2}:{1:D2}" -f $minutes, $secs
+    }
+}
+
+# 1. 选择保存盘符
+$drives = Get-PSDrive -PSProvider FileSystem | Select-Object -ExpandProperty Name
+Write-Host "可用分区: " ($drives -join "  ")
+$selection = Read-Host "请输入要保存文件的盘符字母"
+$selection = $selection.ToUpper()
+
+if (-not ($drives -contains $selection)) {
+    Write-Host "输入的盘符无效，请重新运行脚本。"
+    exit
+}
+
+# 定义保存目录（盘符:\bartender）
+$saveDir = Join-Path "$selection`:\" "bartender"
+if (-not (Test-Path $saveDir)) {
+    New-Item -Path $saveDir -ItemType Directory -Force | Out-Null
+}
+Write-Host "文件将保存到: $saveDir`n"
+
+# 2. 定义需要下载的文件列表（已填入你的URL和大小）
+$fileList = @(
+    [PSCustomObject]@{
+        Name      = "2016_R9_key.zip"
+        Url       = "http://btkey.2091k.cn/2016_R9_key.zip"
+        SizeBytes = 16098757
+    },
+    [PSCustomObject]@{
+        Name      = "2019_R10_key.zip"
+        Url       = "http://btkey.2091k.cn/2019_R10_key.zip"
+        SizeBytes = 16505582
+    },
+    [PSCustomObject]@{
+        Name      = "2021_R1_key.zip"
+        Url       = "http://btkey.2091k.cn/2021_R1_key.zip"
+        SizeBytes = 16446142
+    },
+    [PSCustomObject]@{
+        Name      = "2021_R5_key.zip"
+        Url       = "http://btkey.2091k.cn/2021_R5_key.zip"
+        SizeBytes = 16488070
+    },
+    [PSCustomObject]@{
+        Name      = "2021_R9_key.zip"
+        Url       = "http://btkey.2091k.cn/2021_R9_key.zip"
+        SizeBytes = 16546710
+    },
+    [PSCustomObject]@{
+        Name      = "2022_R2_key.zip"
+        Url       = "http://btkey.2091k.cn/2022_R2_key.zip"
+        SizeBytes = 16644274
+    },
+    [PSCustomObject]@{
+        Name      = "2022_R6_key.zip"
+        Url       = "http://btkey.2091k.cn/2022_R6_key.zip"
+        SizeBytes = 16723784
+    },
+    [PSCustomObject]@{
+        Name      = "2022_R7_key.zip"
+        Url       = "http://btkey.2091k.cn/2022_R7_key.zip"
+        SizeBytes = 16726138
+    },
+    [PSCustomObject]@{
+        Name      = "2022_R8_key.zip"
+        Url       = "http://btkey.2091k.cn/2022_R8_key.zip"
+        SizeBytes = 16728168
+    },
+    [PSCustomObject]@{
+        Name      = "BT_10.1_SR4_key.zip"
+        Url       = "http://btkey.2091k.cn/BT_10.1_SR4_key.zip"
+        SizeBytes = 14825316
+    }
+)
+
+# 3. 显示文件选择列表并处理用户选择（使用循环）
+do {
+    Write-Host "`n请选择要下载的文件（输入序号）："
+    for ($i = 0; $i -lt $fileList.Count; $i++) {
+        $size = Format-Size $fileList[$i].SizeBytes
+        Write-Host "$($i + 1). $($fileList[$i].Name) （大小：$size）"
+    }
+
+    # 4. 处理用户选择（修复逻辑错误）
+    $choice = Read-Host "`n请输入序号"
+    $selectedIndex = $null
+    if ([int]::TryParse($choice, [ref]$selectedIndex)) {
+        if ($selectedIndex -ge 1 -and $selectedIndex -le $fileList.Count) {
+            # 提取选中的文件信息
+            $selectedFile = $fileList[$selectedIndex - 1]
+            Write-Host "`n=== 选中文件信息 ==="
+            Write-Host "文件名：$($selectedFile.Name)"
+            Write-Host "文件大小：$(Format-Size $selectedFile.SizeBytes)"
+            Write-Host "保存路径：$(Join-Path $saveDir $selectedFile.Name)`n"
+            
+            $confirm = Read-Host "是否确认下载此文件？（Y-确认下载 / N-重新选择 / Q-关闭窗口）"
+            
+            if ($confirm -match "^Y|y$") {
+                # 用户确认下载，跳出循环
+                $downloadConfirmed = $true
+                break
+            }
+            elseif ($confirm -match "^Q|q$") {
+                # 用户选择退出
+                Write-Host "脚本已退出。"
+                exit
+            }
+            else {
+                # 用户选择重新选择，继续循环
+                Write-Host "`n重新选择文件..."
+                continue
+            }
+        }
+        else {
+            Write-Host "`n序号超出范围，请输入 1 到 $($fileList.Count) 之间的数字。"
+        }
+    }
+    else {
+        Write-Host "`n输入无效，请输入数字序号。"
+    }
+} while ($true)
+
+# 5. 下载选中的文件
+$savePath = Join-Path $saveDir $selectedFile.Name
+
+try {
+    Write-Host "`n开始下载：$($selectedFile.Name)..."
+
+    # 创建HTTP请求（禁用缓存，避免重复下载旧文件）
+    $request = [System.Net.HttpWebRequest]::Create($selectedFile.Url)
+    $request.Headers.Add("Cache-Control", "no-cache")  # 禁用缓存
+    $request.Headers.Add("Pragma", "no-cache")          # 兼容旧服务器
+    $request.Method = "GET"
+
+    $response = $request.GetResponse()
+    $stream = $response.GetResponseStream()
+    $fileStream = [System.IO.File]::Create($savePath)
+
+    $totalBytes = $selectedFile.SizeBytes
+    $totalSize = Format-Size $totalBytes
+
+    $buffer = New-Object byte[] 8192
+    $downloaded = 0
+    
+    # 速度与剩余时间计算变量
+    $lastTime = Get-Date
+    $lastDownloaded = 0
+    $currentSpeed = 0
+    $bytesPerSecond = 0
+
+    while (($read = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+        $fileStream.Write($buffer, 0, $read)
+        $downloaded += $read
+
+        # 每0.5秒更新一次速度
+        $currentTime = Get-Date
+        $timeDiff = ($currentTime - $lastTime).TotalSeconds
+        
+        if ($timeDiff -ge 0.5) {
+            $byteDiff = $downloaded - $lastDownloaded
+            if ($timeDiff -gt 0) {
+                $bytesPerSecond = $byteDiff / $timeDiff  # 字节/秒
+                $currentSpeed = $bytesPerSecond / 1048576  # 转换为MB/s
+            }
+            $lastTime = $currentTime
+            $lastDownloaded = $downloaded
+        }
+
+        $percent = [math]::Round(($downloaded / $totalBytes) * 100, 2)
+        $downloadedSize = Format-Size $downloaded
+        $speedFormatted = "{0:N2} MB/s" -f $currentSpeed
+
+        # 计算剩余时间
+        $remainingBytes = $totalBytes - $downloaded
+        if ($bytesPerSecond -gt 0 -and $remainingBytes -gt 0) {
+            $remainingSeconds = $remainingBytes / $bytesPerSecond
+            $timeRemaining = Format-Time $remainingSeconds
+        } else {
+            $timeRemaining = "未知"
+        }
+
+        Write-Progress -Activity "正在下载 $($selectedFile.Name)..." `
+            -Status "$downloadedSize / $totalSize  速度: $speedFormatted  剩余时间: $timeRemaining" `
+            -PercentComplete $percent
+    }
+
+    # 关闭流（确保文件写入完整）
+    $fileStream.Flush()
+    $fileStream.Close()
+    $stream.Close()
+    $response.Close()
+
+    # 校验下载文件大小（新增：确保文件下载完整）
+    $downloadedFileSize = (Get-Item $savePath).Length
+    if ($downloadedFileSize -ne $totalBytes) {
+        Write-Warning "下载文件大小不匹配（实际：$(Format-Size $downloadedFileSize)，预期：$totalSize），可能下载不完整！"
+    } else {
+        Write-Host "`n✅ 下载完成！文件已保存到：$savePath"
+    }
+    Start-Process -FilePath $saveDir  # 打开保存目录
+}
+catch {
+    Write-Host "`n❌ 下载失败: $_" -ForegroundColor Red
+    # 若下载失败，删除不完整文件
+    if (Test-Path $savePath) {
+        Remove-Item $savePath -Force
+        Write-Host "已删除不完整文件：$savePath"
+    }
+}
