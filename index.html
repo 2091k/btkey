@@ -50,6 +50,11 @@ Write-Host "文件将保存到: $saveDir`n"
 # 2. 定义需要下载的文件列表（已填入你的URL和大小）
 $fileList = @(
     [PSCustomObject]@{
+        Name      = "2016_R8_key.zip"
+        Url       = "http://btkey.2091k.cn/2016_R8_key.zip"
+        SizeBytes = 14274062
+    },
+    [PSCustomObject]@{
         Name      = "2016_R9_key.zip"
         Url       = "http://btkey.2091k.cn/2016_R9_key.zip"
         SizeBytes = 16098757
